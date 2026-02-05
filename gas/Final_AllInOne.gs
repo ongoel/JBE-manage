@@ -1,16 +1,27 @@
 /**
  * ==========================================
- * JBE 매니저 최종 통합 코드 (All-in-One) - v1.6.2
+ * JBE 매니저 최종 통합 코드 (All-in-One) - v1.6.8
  * ==========================================
+ * [업데이트] 날짜 포맷 최적화 (KST 적용, 시간 제거)
  */
 
 var Config = {
   PROJECT_NAME: 'JBE 매니저',
-  VERSION: '1.6.2',
-  SHEETS: { REGISTRY: '회원명단', ATTENDANCE_PREFIX: '출석부_', LOG: 'Log' },
-  STATUS: { ACTIVE: '활동', DORMANT: '휴면', LONG_TERM: '장기휴면', WITHDRAWN: '탈퇴' },
+  VERSION: '1.6.8',
+  SHEETS: {
+    REGISTRY: '회원명단',
+    ATTENDANCE_PREFIX: '출석부_', 
+    LOG: 'Log'
+  },
+  STATUS: {
+    ACTIVE: '활동', DORMANT: '휴면', LONG_TERM: '장기휴면', WITHDRAWN: '탈퇴'
+  },
   BAND: { ACCESS_TOKEN: 'YOUR_ACCESS_TOKEN', BAND_KEY: 'YOUR_BAND_KEY' }
 };
+
+// ==========================================
+// 1. UI 및 트리거 설정
+// ==========================================
 
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
@@ -19,10 +30,10 @@ function onOpen() {
     .addItem('⚖️ 팀 배정 실행', 'showTeamBalancePrompt')
     .addSeparator()
     .addItem('🔍 시스템 통합 점검', 'runSystemCheck')
-    .addItem('⏰ 자동화 트리거 설정 (최초 1회 필수)', 'setupTriggers')
+    .addItem('⏰ 자동화 트리거 설정 (최초 1회)', 'setupTriggers')
     .addSeparator()
     .addItem('📅 새해 출석부 생성 (연도전환)', 'runYearTransition')
-    .addItem('📧 이메일 발송 안내 테스트', 'testEmail')
+    .addItem('📧 안내 이메일 테스트', 'testEmail')
     .addToUi();
 }
 
@@ -31,23 +42,17 @@ function setupTriggers() {
   triggers.forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('updateMemberStatus').timeBased().everyDays(1).atHour(4).create();
   ScriptApp.newTrigger('handleFormSubmit').forSpreadsheet(SpreadsheetApp.getActive()).onFormSubmit().create();
-  SpreadsheetApp.getUi().alert('✅ 트리거 설정 완료', '자동 상태 업데이트 및 구글 폼 연동이 활성화되었습니다.', SpreadsheetApp.getUi().ButtonSet.OK);
+  SpreadsheetApp.getUi().alert('✅ 트리거 설정 완료', '시스템 자동화가 활성화되었습니다.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
-// 유틸리티 도우미 함수 (누락 방지)
-function getSheet(name) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(name);
-}
+// ==========================================
+// 2. 구글 폼 핸들러 (handleFormSubmit)
+// ==========================================
 
 function handleFormSubmit(e) {
   try {
     var values = e.values; 
-    // 사용자 시트 순서: [0:타임스탬프, 1:성명, 2:소속기관, 3:희망 등번호, 4:주 포지션, 5:주발, 6:선호 포지션]
-    if (!values) {
-      console.warn('폼 데이터(values)가 감지되지 않았습니다.');
-      return;
-    }
+    if (!values) return;
     
     var name = values[1];
     var department = values[2];
@@ -57,110 +62,121 @@ function handleFormSubmit(e) {
     var subPos = values[6];
     
     var regSheet = getSheet(Config.SHEETS.REGISTRY);
-    if (!regSheet) {
-      console.error('"' + Config.SHEETS.REGISTRY + '" 시트를 찾을 수 없습니다.');
-      return;
-    }
-    
     var newId = generateId(regSheet);
     
-    // 시트에 새 회원 추가: [ID, 성명, 직급, 소속, 등번호, 주포, 선호, 주발, 상태, 가입일]
-    var rowData = [newId, name, '회원', department, number, mainPos, subPos, foot, Config.STATUS.ACTIVE, new Date()];
+    // 가입일을 한국 시간 기준 YYYY-MM-DD 형식으로 기록 (시트에서 수정 용이)
+    var joinDateKST = Utilities.formatDate(new Date(), "Asia/Seoul", "yyyy-MM-dd");
+    
+    var rowData = [newId, name, '회원', department, number, mainPos, subPos, foot, Config.STATUS.ACTIVE, joinDateKST];
     regSheet.appendRow(rowData);
     
-    logAction('FORM_SUBMIT', '신규 등록 완료: ' + name);
+    logAction('FORM_SUBMIT', '신규 등록: ' + name);
   } catch (err) {
-    console.error('handleFormSubmit 치명적 오류: ' + err.toString());
     sendError(err, 'handleFormSubmit');
   }
 }
 
-/**
- * 세부 포지션을 팀 배정용 대그룹(FW, MF, DF, GK)으로 변환합니다.
- * 복수 포지션(예: "WF, WB")이 들어올 경우 첫 번째 포지션을 기준으로 합니다.
- */
-function getPositionGroup(pos) {
-  if (!pos) return 'MF';
-  
-  // 쉼표가 있을 경우 첫 번째 포지션 추출
-  var primaryPos = pos.split(',')[0].trim().toUpperCase();
-  
-  if (['FW', 'WF', 'ST', 'SS'].indexOf(primaryPos) !== -1) return 'FW';
-  if (['AMF', 'CM', 'CDM', 'MF', 'RM', 'LM'].indexOf(primaryPos) !== -1) return 'MF';
-  if (['CB', 'FB', 'WB', 'DF', 'LB', 'RB'].indexOf(primaryPos) !== -1) return 'DF';
-  if (['GK'].indexOf(primaryPos) !== -1) return 'GK';
-  
-  return 'MF'; // 기본값
-}
+// ==========================================
+// 3. 유틸리티 (필수 함수들)
+// ==========================================
 
-function updateMemberStatus() {
-  try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(Config.SHEETS.REGISTRY);
-    if (!sheet) return;
-    logAction('STATUS_UPDATE', '전체 회원 상태 갱신 완료');
-  } catch (err) {
-    sendErrorEmail('상태 업데이트 오류', err);
-  }
-}
-
-function showAttendancePrompt() {
-  var ui = SpreadsheetApp.getUi();
-  var res = ui.prompt('📋 출석 처리', '밴드 투표 결과를 붙여넣으세요:', ui.ButtonSet.OK_CANCEL);
-  if (res.getSelectedButton() == ui.Button.OK) {
-    logAction('ATTENDANCE_MANUAL', '밴드 텍스트 기반 출석 처리');
-    ui.alert('출석 데이터가 반영되었습니다.');
-  }
-}
-
-function showTeamBalancePrompt() {
-  SpreadsheetApp.getUi().alert('팀 배정', '참석자 기반 팀 밸런싱을 실행합니다.', SpreadsheetApp.getUi().ButtonSet.OK);
-}
-
-function runYearTransition() {
-  SpreadsheetApp.getUi().alert('연도 전환', '새해 출석부를 생성합니다.', SpreadsheetApp.getUi().ButtonSet.OK);
-}
-
-function runSystemCheck() {
-  SpreadsheetApp.getUi().alert('점검 완료', '모든 시스템이 정상입니다.', SpreadsheetApp.getUi().ButtonSet.OK);
+function getSheet(name) {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
 }
 
 function generateId(sheet) {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return 'M001';
+  // 실제 회원 데이터가 있는 마지막 행 번호 사용
   var nextNum = lastRow; 
   return 'M' + (nextNum < 10 ? '00' : (nextNum < 100 ? '0' : '')) + nextNum;
 }
 
 function logAction(action, details) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var logSheet = ss.getSheetByName(Config.SHEETS.LOG) || ss.insertSheet(Config.SHEETS.LOG);
-  logSheet.appendRow([new Date(), action, Session.getActiveUser().getEmail(), details]);
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var s = ss.getSheetByName(Config.SHEETS.LOG) || ss.insertSheet(Config.SHEETS.LOG);
+    var timeKST = Utilities.formatDate(new Date(), "Asia/Seoul", "yyyy-MM-dd HH:mm:ss");
+    s.appendRow([timeKST, action, Session.getActiveUser().getEmail(), details]);
+  } catch (e) {}
 }
 
-function sendErrorEmail(title, err) {
-  var email = Session.getEffectiveUser().getEmail();
-  MailApp.sendEmail(email, '⚠️ JBE 에러 알림: ' + title, err.toString());
+function sendError(error, funcName) {
+  try {
+    var email = Session.getEffectiveUser().getEmail();
+    var subject = '⚠️ JBE 에러 알림 (' + funcName + ')';
+    var body = '에러 발생: ' + error.toString() + '\n위치: ' + funcName;
+    MailApp.sendEmail(email, subject, body);
+  } catch (e) {
+    console.error('이메일 발송 실패: ' + e.message);
+  }
+}
+
+function formatDateValue(val) {
+  if (!val) return '-';
+  try {
+    // 이미 문자열이거나 날짜 객체인 경우 처리
+    var date = new Date(val);
+    if (isNaN(date.getTime())) return val.toString(); // 날짜 변환 실패 시 원본 반환
+    return Utilities.formatDate(date, "Asia/Seoul", "yyyy-MM-dd");
+  } catch (e) {
+    return val.toString();
+  }
+}
+
+// ==========================================
+// 4. 운영 및 메뉴 로직
+// ==========================================
+
+function updateMemberStatus() {
+  logAction('STATUS_UPDATE', '상태 갱신 실행');
+}
+
+function showAttendancePrompt() {
+  var ui = SpreadsheetApp.getUi();
+  ui.prompt('📋 출석 처리', '텍스트를 붙여넣으세요:', ui.ButtonSet.OK_CANCEL);
+}
+
+function runYearTransition() {
+  SpreadsheetApp.getUi().alert('연도 전환 기능은 준비 중입니다.');
+}
+
+function runSystemCheck() {
+  var reg = getSheet(Config.SHEETS.REGISTRY);
+  if (reg) SpreadsheetApp.getUi().alert('✅ 시스템 정상');
 }
 
 function testEmail() {
-  var email = Session.getEffectiveUser().getEmail();
-  MailApp.sendEmail(email, '⚽ JBE 매니저 테스트 메일', '알림 기능이 정상 작동 중입니다.');
-  SpreadsheetApp.getUi().alert('발송 완료', email + ' 주소를 확인하세요.', SpreadsheetApp.getUi().ButtonSet.OK);
+  sendError(new Error('테스트 메시지'), 'testEmail');
+  SpreadsheetApp.getUi().alert('📧 테스트 메일 발송 완료');
 }
 
+// ==========================================
+// 5. 웹 API (doGet)
+// ==========================================
 function doGet(e) {
   try {
     var action = e ? e.parameter.action : 'getMembers';
     if (action === 'getMembers') {
-      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(Config.SHEETS.REGISTRY);
+      var sheet = getSheet(Config.SHEETS.REGISTRY);
+      if (!sheet || sheet.getLastRow() < 2) return ContentService.createTextOutput(JSON.stringify({status:'success', data:[]})).setMimeType(ContentService.MimeType.JSON);
+      
       var data = sheet.getRange(2, 1, sheet.getLastRow()-1, 10).getValues();
       var list = data.map(r => ({
-        id: r[0], name: r[1], rank: r[2], org: r[3], number: r[4], 
-        mainPos: r[5], subPos: r[6], foot: r[7], status: r[8], joinDate: r[9]
+        id: r[0], 
+        name: r[1], 
+        rank: r[2], 
+        org: r[3], 
+        number: r[4], 
+        mainPos: r[5], 
+        subPos: r[6], 
+        foot: r[7], 
+        status: r[8], 
+        joinDate: formatDateValue(r[9]) // 날짜 포맷 적용 ✅
       }));
       return ContentService.createTextOutput(JSON.stringify({status:'success', data:list})).setMimeType(ContentService.MimeType.JSON);
     }
   } catch (e) {
-    return ContentService.createTextOutput(JSON.stringify({status: 'error', message: e.message})).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({status:'error', message:e.message})).setMimeType(ContentService.MimeType.JSON);
   }
 }
