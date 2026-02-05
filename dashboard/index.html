@@ -1,62 +1,68 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JBE 매니저 대시보드</title>
+    <title>JBE 축구동호회 매니저</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="container">
         <header>
             <h1>JBE 축구동호회 매니저</h1>
+            <p class="subtitle">통합 관리 시스템</p>
         </header>
-        <main>
-            <section id="summary">
-                <h2>📊 현황 요약</h2>
-                <div class="card-grid">
-                    <div class="card">
-                        <h3>총 회원</h3>
-                        <p id="total-members">-</p>
-                    </div>
-                    <div class="card">
-                        <h3>이번 달 출석률</h3>
-                        <p id="monthly-attendance">-</p>
+
+        <section class="dashboard-summary">
+            <div class="card">
+                <h3>📊 현황 요약</h3>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <span class="label">총 회원</span>
+                        <span class="value" id="total-members">-</span>
                     </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <section id="member-list">
-                <h2>📋 회원 목록</h2>
-                <div class="table-container">
+        <section class="member-list">
+            <div class="card">
+                <h3>👥 회원 명단</h3>
+                <div class="table-responsive">
                     <table id="members-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>회원번호</th>
                                 <th>성명</th>
-                                <th>소속</th>
+                                <th>직급</th>
+                                <th>소속기관</th>
                                 <th>등번호</th>
-                                <th>주 포지션</th>
-                                <th>선호 포지션</th>
+                                <th>주포지션</th>
+                                <th>선호포지션</th>
                                 <th>주발</th>
                                 <th>상태</th>
                                 <th>가입일</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Data will be populated here -->
                             <tr>
-                                <td colspan="9" class="loading">데이터를 불러오는 중...</td>
+                                <td colspan="10" class="loading">데이터를 불러오는 중...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-            </section>
-        </main>
+            </div>
+        </section>
+
         <footer>
             <p>&copy; 2026 JBE Manager</p>
         </footer>
     </div>
     <script src="script.js"></script>
 </body>
+
 </html>

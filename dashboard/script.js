@@ -14,8 +14,6 @@ async function fetchMembers() {
 
         if (!GAS_API_URL) {
             console.warn('GAS_API_URL is not set. Using mock data.');
-            // Mock data for demonstration/local testing
-            // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 800));
             members = getMockMembers();
         } else {
@@ -34,7 +32,7 @@ async function fetchMembers() {
 
     } catch (error) {
         console.error('Error fetching members:', error);
-        tableBody.innerHTML = `<tr><td colspan="9" class="loading" style="color: red;">데이터를 불러오는 중 오류가 발생했습니다: ${error.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="10" class="loading" style="color: red;">데이터를 불러오는 중 오류가 발생했습니다: ${error.message}</td></tr>`;
     }
 }
 
@@ -43,25 +41,35 @@ function renderMembers(members) {
     tableBody.innerHTML = '';
 
     if (members.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="9" class="loading">등록된 회원이 없습니다.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="10" class="loading">등록된 회원이 없습니다.</td></tr>';
         return;
     }
 
     members.forEach(member => {
         const tr = document.createElement('tr');
+        // v1.4.0 구조: 번호|성명|직급|소속기관|등번호|주포|선호|주발|상태|가입일
         tr.innerHTML = `
             <td>${member.id}</td>
-            <td>${member.name}</td>
-            <td>${member.department}</td>
+            <td style="font-weight:bold;">${member.name}</td>
+            <td>${member.rank || '-'}</td>
+            <td>${member.org || '-'}</td>
             <td>${member.number || '-'}</td>
             <td>${member.mainPos || '-'}</td>
             <td>${member.subPos || '-'}</td>
             <td>${member.foot || '-'}</td>
-            <td>${member.status}</td>
-            <td>${member.joinDate}</td>
+            <td><span class="status-badge status-${getStatusClass(member.status)}">${member.status}</span></td>
+            <td>${member.joinDate || '-'}</td>
         `;
         tableBody.appendChild(tr);
     });
+}
+
+function getStatusClass(status) {
+    if (status === '활동') return 'active';
+    if (status === '휴면') return 'dormant';
+    if (status === '장기휴면') return 'long-term';
+    if (status === '탈퇴') return 'withdrawn';
+    return 'unknown';
 }
 
 function updateSummary(members) {
@@ -69,56 +77,11 @@ function updateSummary(members) {
     if (totalMembersElement) {
         totalMembersElement.textContent = members.length + '명';
     }
-
-    // Attendance logic would go here if we had attendance data
-    // For now, leave it as '-' or mock it
 }
 
 function getMockMembers() {
     return [
-        {
-            id: 'M001',
-            name: '홍길동',
-            department: '개발팀',
-            number: 10,
-            mainPos: 'FW',
-            subPos: 'MF',
-            foot: 'R',
-            status: '활동',
-            joinDate: '2023-01-01'
-        },
-        {
-            id: 'M002',
-            name: '김철수',
-            department: '기획팀',
-            number: 7,
-            mainPos: 'MF',
-            subPos: 'DF',
-            foot: 'L',
-            status: '활동',
-            joinDate: '2023-02-15'
-        },
-        {
-            id: 'M003',
-            name: '이영희',
-            department: '디자인팀',
-            number: 1,
-            mainPos: 'GK',
-            subPos: '-',
-            foot: 'R',
-            status: '휴면',
-            joinDate: '2023-03-10'
-        },
-        {
-            id: 'M004',
-            name: '박민수',
-            department: '인사팀',
-            number: 14,
-            mainPos: 'DF',
-            subPos: 'MF',
-            foot: 'L',
-            status: '활동',
-            joinDate: '2023-05-20'
-        }
+        { id: 'M001', name: '홍길동', rank: '주장', org: '서울지부', number: 10, mainPos: 'FW', subPos: 'MF', foot: 'R', status: '활동', joinDate: '2023-01-01' },
+        { id: 'M002', name: '김철수', rank: '회원', org: '경기지부', number: 7, mainPos: 'MF', subPos: 'DF', foot: 'L', status: '휴면', joinDate: '2023-02-15' }
     ];
 }
