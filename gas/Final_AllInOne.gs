@@ -34,28 +34,43 @@ function setupTriggers() {
   SpreadsheetApp.getUi().alert('✅ 트리거 설정 완료', '자동 상태 업데이트 및 구글 폼 연동이 활성화되었습니다.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
+// 유틸리티 도우미 함수 (누락 방지)
+function getSheet(name) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(name);
+}
+
 function handleFormSubmit(e) {
   try {
     var values = e.values; 
     // 사용자 시트 순서: [0:타임스탬프, 1:성명, 2:소속기관, 3:희망 등번호, 4:주 포지션, 5:주발, 6:선호 포지션]
-    if (!values) return;
+    if (!values) {
+      console.warn('폼 데이터(values)가 감지되지 않았습니다.');
+      return;
+    }
     
     var name = values[1];
     var department = values[2];
     var number = values[3];
     var mainPos = values[4];
-    var foot = values[5];     // 주발 (5번 열)
-    var subPos = values[6];   // 선호 포지션 (6번 열)
+    var foot = values[5];
+    var subPos = values[6];
     
-    var sheet = getSheet(Config.SHEETS.REGISTRY);
-    var newId = generateId(sheet);
+    var regSheet = getSheet(Config.SHEETS.REGISTRY);
+    if (!regSheet) {
+      console.error('"' + Config.SHEETS.REGISTRY + '" 시트를 찾을 수 없습니다.');
+      return;
+    }
+    
+    var newId = generateId(regSheet);
     
     // 시트에 새 회원 추가: [ID, 성명, 직급, 소속, 등번호, 주포, 선호, 주발, 상태, 가입일]
     var rowData = [newId, name, '회원', department, number, mainPos, subPos, foot, Config.STATUS.ACTIVE, new Date()];
-    sheet.appendRow(rowData);
+    regSheet.appendRow(rowData);
     
-    logAction('FORM_SUBMIT', '신규 등록 완료: ' + name + ' (' + mainPos + ')');
+    logAction('FORM_SUBMIT', '신규 등록 완료: ' + name);
   } catch (err) {
+    console.error('handleFormSubmit 치명적 오류: ' + err.toString());
     sendError(err, 'handleFormSubmit');
   }
 }
