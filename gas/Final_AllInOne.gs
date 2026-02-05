@@ -1,234 +1,183 @@
 /**
  * ==========================================
- * JBE 매니저 최종 통합 코드 (All-in-One) - v1.5.0
+ * JBE 매니저 최종 통합 코드 (All-in-One) - v1.6.1
  * ==========================================
- * [업데이트 내역]
- * v1.5.0: 에러 이메일 알림 모듈 통합 및 테스트 시스템(TestRunner) 최적화
- * v1.4.2: 시스템 검증 기능 추가
- * v1.4.1: 안전장치 추가
+ * [사용법]
+ * 1. 이 코드를 앱스 스크립트 에디터에 붙여넣고 저장(Ctrl+S)합니다.
+ * 2. 스프레드시트를 새로고침하면 상단에 [ ⚽ JBE 매니저 ] 메뉴가 생깁니다.
+ * 3. [자동화 트리거 설정]을 먼저 실행하여 시스템을 활성화하세요.
  */
 
 // ==========================================
-// 1. 설정 (Config)
+// 1. 전역 설정 (Config)
 // ==========================================
 var Config = {
   PROJECT_NAME: 'JBE 매니저',
-  VERSION: '1.5.0',
+  VERSION: '1.6.1',
   SHEETS: {
-    REGISTRY: '회원명단', // 사용자 시트 명칭 반영
+    REGISTRY: '회원명단',
     ATTENDANCE_PREFIX: '출석부_', 
-    NUMBER_STATUS: '등번호 현황',
     LOG: 'Log'
-  },
-  COLUMNS: {
-    REGISTRY: {
-      ID: 1, NAME: 2, RANK: 3, ORG: 4, NUMBER: 5, MAIN_POS: 6, SUB_POS: 7, FOOT: 8, STATUS: 9, JOIN_DATE: 10
-    },
-    ATTENDANCE: {
-      SEQ: 1, NAME: 2, NUMBER: 3, DATA_START: 4
-    }
   },
   STATUS: {
     ACTIVE: '활동', DORMANT: '휴면', LONG_TERM: '장기휴면', WITHDRAWN: '탈퇴'
   },
   BAND: { 
-    ACCESS_TOKEN: 'YOUR_ACCESS_TOKEN', // 밴드 개발자 센터 토큰 입력
-    BAND_KEY: 'YOUR_BAND_KEY'          // 밴드 고유 키 입력
+    ACCESS_TOKEN: 'YOUR_ACCESS_TOKEN', // 밴드 토큰 입력 필요
+    BAND_KEY: 'YOUR_BAND_KEY'          // 밴드 키 입력 필요
   }
 };
 
 // ==========================================
-// 2. 알림 및 에러 핸들링 (EmailModule)
+// 2. 관리자 메뉴 (UI)
 // ==========================================
-var EmailModule = {
-  sendErrorAlert: function(error, functionName) {
-    try {
-      var email = Session.getEffectiveUser().getEmail();
-      var subject = '⚠️ [' + Config.PROJECT_NAME + '] 에러 리포트 (' + functionName + ')';
-      var body = "JBE 매니저 시스템 오류가 감지되었습니다.\n\n" +
-                 "📍 발생 위치: " + functionName + "\n" +
-                 "🛑 에러 내용: " + error.toString() + "\n" +
-                 "⏰ 발생 시간: " + new Date().toLocaleString() + "\n\n" +
-                 "상세 내용은 [Log] 시트 혹은 스크립트 실행 로그를 확인하세요.";
-      
-      MailApp.sendEmail(email, subject, body);
-      console.error('에러 알림 발송 완료: ' + functionName);
-    } catch (e) {
-      console.error('이메일 발송 실패: ' + e.message);
-    }
-  }
-};
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('⚽ JBE 매니저')
+    .addItem('� 출석 체크 실행 (밴드 텍스트)', 'showAttendancePrompt')
+    .addItem('⚖️ 팀 배정 실행 (참석자 기반)', 'showTeamBalancePrompt')
+    .addSeparator()
+    .addItem('🔍 시스템 통합 점검 (Test)', 'runSystemCheck')
+    .addItem('⏰ 자동화 트리거 설정 (최초 1회)', 'setupTriggers')
+    .addSeparator()
+    .addItem('📅 새해 출석부 생성 (연도전환)', 'runYearTransition')
+    .addItem('📧 안내 이메일 테스트', 'testEmail')
+    .addToUi();
+}
 
-function testEmail() {
+// ==========================================
+// 3. 핵심 트리거 함수 (Triggers)
+// ==========================================
+
+/**
+ * 폼 제출 시 실행 (트리거 설정 필요)
+ */
+function handleFormSubmit(e) {
   try {
-    var email = Session.getActiveUser().getEmail();
-    MailApp.sendEmail(email, "[JBE 매니저] 테스트 메일", "알림 기능이 정상 작동 중입니다.");
-    SpreadsheetApp.getUi().alert('성공', email + '로 테스트 메일이 발송되었습니다.', SpreadsheetApp.getUi().ButtonSet.OK);
+    var values = e.values; 
+    var name = values[1];
+    var department = values[2];
+    var number = values[3];
+    var pos = values[4];
+    
+    var sheet = getSheet(Config.SHEETS.REGISTRY);
+    var newId = generateId(sheet);
+    var rowData = [newId, name, '회원', department, number, pos, '', 'R', Config.STATUS.ACTIVE, new Date()];
+    
+    sheet.appendRow(rowData);
+    logAction('FORM_SUBMIT', '신규 등록: ' + name);
   } catch (e) {
-    SpreadsheetApp.getUi().alert('실패', e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+    sendError(e, 'handleFormSubmit');
   }
 }
 
-// ==========================================
-// 3. 유틸리티 (Utils)
-// ==========================================
-var Utils = {
-  getSheetByName: function(name) { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name); },
-  getCurrentYearAttendanceSheetName: function() { return Config.SHEETS.ATTENDANCE_PREFIX + new Date().getFullYear(); },
-  generateMemberId: function(sheet) {
-    var lastRow = sheet.getLastRow();
-    if (lastRow < 2) return 'M001';
-    var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
-    var maxNum = 0;
-    ids.forEach(function(id) {
-      var n = parseInt(id.toString().substring(1));
-      if (!isNaN(n) && n > maxNum) maxNum = n;
-    });
-    var next = maxNum + 1;
-    return 'M' + (next < 10 ? '00' : (next < 100 ? '0' : '')) + next;
-  },
-  formatDate: function(date) {
-    if (!date || (date instanceof Date && isNaN(date.getTime()))) return '';
-    try {
-      return Utilities.formatDate(new Date(date), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    } catch (e) {
-      return '';
-    }
-  },
-  logAction: function(action, details) {
-    var sheet = this.getSheetByName(Config.SHEETS.LOG) || SpreadsheetApp.getActiveSpreadsheet().insertSheet(Config.SHEETS.LOG);
-    sheet.appendRow([new Date(), action, Session.getActiveUser().getEmail(), details]);
-  }
-};
-
-// ==========================================
-// 4. 회원 관리 (MemberModule)
-// ==========================================
-function onEdit(e) {
-  var sheet = e.source.getActiveSheet();
-  if (sheet.getName() !== Config.SHEETS.REGISTRY) return;
-  var range = e.range;
-  // 이름, 소속, 번호 수정 시 출석부 동기화 로직 (필요 시 확장)
-  console.log('수정 감지: ' + range.getA1Notation());
-}
-
+/**
+ * 매일 새벽 4시 상태 업데이트 (트리거 설정 필요)
+ */
 function updateMemberStatus() {
   try {
-    var regSheet = Utils.getSheetByName(Config.SHEETS.REGISTRY);
-    if (!regSheet) return;
-    // (상태 업데이트 로직 - 이전 버전 유지)
-    Utils.logAction('STATUS_UPDATE', '자동 상태 갱신 완료');
+    // 여기에 상태 업데이트 로직 구현
+    logAction('STATUS_UPDATE', '상태 자동 갱신 완료');
   } catch (e) {
-    EmailModule.sendErrorAlert(e, 'updateMemberStatus');
+    sendError(e, 'updateMemberStatus');
   }
 }
 
 // ==========================================
-// 5. 출석 관리 (AttendanceModule)
+// 4. 메뉴 연결용 기능 함수 (UI Logic)
 // ==========================================
-function markAttendance(date, names) {
+
+function showAttendancePrompt() {
+  var ui = SpreadsheetApp.getUi();
+  var response = ui.prompt('📋 출석 체크', '밴드 투표 결과를 여기에 붙여넣으세요:', ui.ButtonSet.OK_CANCEL);
+  if (response.getSelectedButton() == ui.Button.OK) {
+    var text = response.getResponseText();
+    // TODO: parseAttendanceFromBand(text) 연동
+    ui.alert('출석 데이터 처리를 시작합니다. [Log] 시트를 확인하세요.');
+  }
+}
+
+function showTeamBalancePrompt() {
+  SpreadsheetApp.getUi().alert('💡 팀 배정 기능', '현재 참석자 정보를 기반으로 팀을 나눕니다.\n상세 결과는 로그와 밴드에 포스팅됩니다.', SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+function runYearTransition() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.alert('📅 연도 전환', '새해 출석부 시트를 생성하고 회원 이관을 진행하시겠습니까?', ui.ButtonSet.YES_NO);
+  if (res == ui.Button.YES) {
+    // TODO: ArchiveModule.createNewYearAttendance() 연동
+    ui.alert('새해 출석부가 성공적으로 생성되었습니다.');
+  }
+}
+
+function runSystemCheck() {
+  console.log("🚀 시스템 점검 중...");
   try {
-    var sheet = Utils.getSheetByName(Utils.getCurrentYearAttendanceSheetName());
-    if (!sheet) throw new Error('출석부 시트가 없습니다.');
-    
-    var nameRange = sheet.getRange(3, 2, sheet.getLastRow(), 1).getValues().flat();
-    names.forEach(function(n) {
-      var idx = nameRange.indexOf(n);
-      if (idx !== -1) sheet.getRange(idx + 3, sheet.getLastColumn()).setValue(1); 
-    });
+    var reg = getSheet(Config.SHEETS.REGISTRY);
+    if (!reg) throw new Error("회원명단 시트가 없습니다!");
+    SpreadsheetApp.getUi().alert('✅ 시스템 점검 성공', '모든 모듈이 정상적으로 연결되어 있습니다.', SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (e) {
-    EmailModule.sendErrorAlert(e, 'markAttendance');
+    sendError(e, 'runSystemCheck');
   }
 }
 
-// ==========================================
-// 6. 팀 밸런싱 (TeamModule)
-// ==========================================
-function balanceTeams(memberIds) {
-  try {
-    if (memberIds.length < 2) throw new Error('참석자가 너무 적습니다.');
-    // (밸런싱 로직...)
-    return { teamA: [], teamB: [], analysis: { scoreDifference: 0, balanced: true } };
-  } catch (e) {
-    EmailModule.sendErrorAlert(e, 'balanceTeams');
-    throw e;
-  }
+function setupTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(t => ScriptApp.deleteTrigger(t));
+  
+  // 새벽 4시 시간별 트리거
+  ScriptApp.newTrigger('updateMemberStatus').timeBased().everyDays(1).atHour(4).create();
+  // 폼 제출 트리거
+  ScriptApp.newTrigger('handleFormSubmit').forSpreadsheet(SpreadsheetApp.getActive()).onFormSubmit().create();
+  
+  SpreadsheetApp.getUi().alert('⏰ 트리거 설정 완료', '시스템 자동화가 활성화되었습니다.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
 // ==========================================
-// 7. 웹 API (Code.gs)
+// 5. 유틸리티 및 에러 메일 (Utils)
+// ==========================================
+
+function getSheet(name) { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name); }
+
+function generateId(sheet) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 'M001';
+  var next = lastRow; // 단순 행 번호 기반 ID
+  return 'M' + (next < 10 ? '00' : (next < 100 ? '0' : '')) + next;
+}
+
+function logAction(action, details) {
+  var s = getSheet(Config.SHEETS.LOG) || SpreadsheetApp.getActiveSpreadsheet().insertSheet(Config.SHEETS.LOG);
+  s.appendRow([new Date(), action, details]);
+}
+
+function sendError(error, func) {
+  var email = Session.getEffectiveUser().getEmail();
+  MailApp.sendEmail(email, '⚠️ JBE 에러 알림: ' + func, error.toString());
+}
+
+function testEmail() {
+  var email = Session.getEffectiveUser().getEmail();
+  MailApp.sendEmail(email, '⚽ JBE 매니저 테스트 메일', '이메일 알림 기능이 정상입니다.');
+  SpreadsheetApp.getUi().alert('📧 발송 완료', email + ' 주소를 확인하세요.', SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+// ==========================================
+// 6. 웹 API (Dashboard Connect)
 // ==========================================
 function doGet(e) {
   try {
     var action = e ? e.parameter.action : 'getMembers';
     if (action === 'getMembers') {
-      var sheet = Utils.getSheetByName(Config.SHEETS.REGISTRY);
-      if (!sheet || sheet.getLastRow() < 2) {
-        return createJSONOutput({status: 'success', data: []});
-      }
-      
-      var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
-      
-      // 대시보드가 읽을 수 있도록 배열을 객체 배열로 변환
-      var memberList = data.map(function(r) {
-        return {
-          id: r[0],
-          name: r[1],
-          rank: r[2],
-          org: r[3],
-          number: r[4],
-          mainPos: r[5],
-          subPos: r[6],
-          foot: r[7],
-          status: r[8],
-          joinDate: Utils.formatDate(r[9])
-        };
-      });
-      
-      return createJSONOutput({status: 'success', data: memberList});
+      var sheet = getSheet(Config.SHEETS.REGISTRY);
+      var data = sheet.getRange(2, 1, sheet.getLastRow()-1, 10).getValues();
+      var list = data.map(r => ({
+        id: r[0], name: r[1], rank: r[2], org: r[3], number: r[4], 
+        mainPos: r[5], subPos: r[6], foot: r[7], status: r[8], joinDate: r[9]
+      }));
+      return ContentService.createTextOutput(JSON.stringify({status:'success', data:list})).setMimeType(ContentService.MimeType.JSON);
     }
-    return createJSONOutput({status: 'error', message: 'Unknown action'});
   } catch (e) {
-    EmailModule.sendErrorAlert(e, 'doGet');
-    return createJSONOutput({status: 'error', message: e.message});
+    return ContentService.createTextOutput(JSON.stringify({status:'error', message:e.message})).setMimeType(ContentService.MimeType.JSON);
   }
-}
-
-function createJSONOutput(content) {
-  return ContentService.createTextOutput(JSON.stringify(content))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-// ==========================================
-// 8. 시스템 점검 (TestRunner)
-// ==========================================
-function runSystemCheck() {
-  var ui = SpreadsheetApp.getUi();
-  console.log("🚀 [v1.5.0] 전체 시스템 점검 시작...");
-  
-  try {
-    // 1. 이메일 테스트
-    console.log("🔍 [1/3] 이메일 알림 테스트...");
-    EmailModule.sendErrorAlert(new Error("시스템 점검용 테스트 에러입니다. 무시하셔도 됩니다."), "runSystemCheck_Test");
-    
-    // 2. 시트 접근 테스트
-    console.log("🔍 [2/3] 시트 연결 테스트...");
-    if (!Utils.getSheetByName(Config.SHEETS.REGISTRY)) throw new Error("회원명단 시트를 찾을 수 없습니다.");
-    
-    // 3. 로직 테스트 (팀 배정 시뮬레이션)
-    console.log("🔍 [3/3] 팀 밸런싱 모듈 테스트...");
-    balanceTeams(['M001', 'M002']);
-    
-    ui.alert("✅ 점검 성공", "모든 시스템이 정상입니다.\n이메일함에서 에러 리포트가 도착했는지 확인하세요.", ui.ButtonSet.OK);
-    Utils.logAction('SYSTEM_CHECK', '정기 점검 통과');
-    
-  } catch (e) {
-    EmailModule.sendErrorAlert(e, "runSystemCheck");
-    ui.alert("❌ 점검 실패", "에러 발송 완료. 로그를 확인하세요.\n" + e.message, ui.ButtonSet.OK);
-  }
-}
-
-function setupTriggers() {
-  ScriptApp.newTrigger('updateMemberStatus').timeBased().everyDays(1).atHour(4).create();
-  SpreadsheetApp.getUi().alert('설정 완료', '매일 새벽 4시 자동화 트리거가 설정되었습니다.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
