@@ -87,6 +87,14 @@ var Utils = {
     var next = maxNum + 1;
     return 'M' + (next < 10 ? '00' : (next < 100 ? '0' : '')) + next;
   },
+  formatDate: function(date) {
+    if (!date || (date instanceof Date && isNaN(date.getTime()))) return '';
+    try {
+      return Utilities.formatDate(new Date(date), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    } catch (e) {
+      return '';
+    }
+  },
   logAction: function(action, details) {
     var sheet = this.getSheetByName(Config.SHEETS.LOG) || SpreadsheetApp.getActiveSpreadsheet().insertSheet(Config.SHEETS.LOG);
     sheet.appendRow([new Date(), action, Session.getActiveUser().getEmail(), details]);
