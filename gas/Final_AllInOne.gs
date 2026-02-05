@@ -155,12 +155,41 @@ function doGet(e) {
     var action = e ? e.parameter.action : 'getMembers';
     if (action === 'getMembers') {
       var sheet = Utils.getSheetByName(Config.SHEETS.REGISTRY);
-      var data = sheet.getRange(2, 1, sheet.getLastRow()-1, 10).getValues();
-      return ContentService.createTextOutput(JSON.stringify({status: 'success', data: data})).setMimeType(ContentService.MimeType.JSON);
+      if (!sheet || sheet.getLastRow() < 2) {
+        return createJSONOutput({status: 'success', data: []});
+      }
+      
+      var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
+      
+      // 대시보드가 읽을 수 있도록 배열을 객체 배열로 변환
+      var memberList = data.map(function(r) {
+        return {
+          id: r[0],
+          name: r[1],
+          rank: r[2],
+          org: r[3],
+          number: r[4],
+          mainPos: r[5],
+          subPos: r[6],
+          foot: r[7],
+          status: r[8],
+          joinDate: Utils.formatDate(r[9])
+        };
+      });
+      
+      return createJSONOutput({status: 'success', data: memberList});
     }
+    return createJSONOutput({status: 'error', message: 'Unknown action'});
   } catch (e) {
-    return ContentService.createTextOutput(JSON.stringify({status: 'error', message: e.message})).setMimeType(ContentService.MimeType.JSON);
+    EmailModule.sendErrorAlert(e, 'doGet');
+    return createJSONOutput({status: 'error', message: e.message});
   }
+}
+
+function createJSONOutput(content) {
+  return ContentService.createTextOutput(JSON.stringify(content))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader("Access-Control-Allow-Origin", "*"); // CORS 해결
 }
 
 // ==========================================
