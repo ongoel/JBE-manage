@@ -56,6 +56,9 @@ function onFormSubmit(e) {
     // 5. 현재 연도 출석부에도 추가
     syncNewMemberToAttendance(rowData);
 
+    // 로그 기록
+    Utils.logAction('ADD_MEMBER_FORM', 'FormTrigger', 'Added member: ' + name + ' (' + newId + ')');
+
   } catch (error) {
     console.error('onFormSubmit 에러: ' + error.toString());
     // 관리자에게 이메일 발송 등 에러 처리
@@ -68,14 +71,7 @@ function onFormSubmit(e) {
  * @returns {boolean} 중복 여부 (true: 중복, false: 사용가능)
  */
 function checkDuplicateNumber(number) {
-  var sheet = Utils.getSheetByName(Config.SHEETS.REGISTRY);
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) return false;
-
-  var numbers = sheet.getRange(2, Config.COLUMNS.REGISTRY.NUMBER, lastRow - 1, 1).getValues().flat();
-  
-  // numbers 배열에 number가 포함되어 있는지 확인
-  return numbers.includes(number);
+  return Validator.checkDuplicateBackNumber(number);
 }
 
 /**
@@ -191,5 +187,6 @@ function syncUpdateToAttendance(memberId, colIndex, newValue) {
   if (targetCol !== -1) {
     attendanceSheet.getRange(targetRow, targetCol).setValue(newValue);
     console.log('출석부 업데이트 완료 (' + memberId + '): ' + newValue);
+    Utils.logAction('UPDATE_ATTENDANCE_SYNC', 'EditTrigger', 'Updated attendance for ' + memberId + ', val: ' + newValue);
   }
 }

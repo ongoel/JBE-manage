@@ -66,5 +66,32 @@ var Utils = {
    */
   formatDate: function(date) {
     return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  },
+
+  /**
+   * 사용자 작업을 로그 시트에 기록합니다.
+   * @param {string} action 작업 유형 (예: ADD_MEMBER, DELETE_MEMBER)
+   * @param {string} user 사용자 식별자 (ID 또는 이메일)
+   * @param {string} details 작업 상세 내용
+   */
+  logAction: function(action, user, details) {
+    try {
+      var logSheetName = Config.SHEETS.LOG;
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheet = ss.getSheetByName(logSheetName);
+
+      // 로그 시트가 없으면 생성
+      if (!sheet) {
+        sheet = ss.insertSheet(logSheetName);
+        sheet.appendRow(['Timestamp', 'Action', 'User', 'Details']);
+        sheet.setFrozenRows(1);
+      }
+
+      var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+      sheet.appendRow([timestamp, action, user, details]);
+
+    } catch (e) {
+      console.error('로그 기록 실패: ' + e.toString());
+    }
   }
 };
