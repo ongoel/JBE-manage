@@ -1,6 +1,6 @@
 // Google Apps Script Web App URL
 // 배포 후 생성된 URL을 여기에 입력하세요.
-const GAS_API_URL = ''; // e.g., 'https://script.google.com/macros/s/.../exec'
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxDXCHn6sityjqJbUdi4EhWfzA1yjAhjl-xgBBti7d6iMW_wb1zlVTJG1iK0d9TKB_Vgw/exec';
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchMembers();
