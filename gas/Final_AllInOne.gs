@@ -61,14 +61,20 @@ function handleFormSubmit(e) {
 
 /**
  * 세부 포지션을 팀 배정용 대그룹(FW, MF, DF, GK)으로 변환합니다.
+ * 복수 포지션(예: "WF, WB")이 들어올 경우 첫 번째 포지션을 기준으로 합니다.
  */
 function getPositionGroup(pos) {
-  var p = pos ? pos.toUpperCase() : 'MF';
-  if (['FW', 'WF', 'ST', 'SS'].indexOf(p) !== -1) return 'FW';
-  if (['AMF', 'CM', 'CDM', 'MF', 'RM', 'LM'].indexOf(p) !== -1) return 'MF';
-  if (['CB', 'FB', 'WB', 'DF', 'LB', 'RB'].indexOf(p) !== -1) return 'DF';
-  if (['GK'].indexOf(p) !== -1) return 'GK';
-  return 'MF';
+  if (!pos) return 'MF';
+  
+  // 쉼표가 있을 경우 첫 번째 포지션 추출
+  var primaryPos = pos.split(',')[0].trim().toUpperCase();
+  
+  if (['FW', 'WF', 'ST', 'SS'].indexOf(primaryPos) !== -1) return 'FW';
+  if (['AMF', 'CM', 'CDM', 'MF', 'RM', 'LM'].indexOf(primaryPos) !== -1) return 'MF';
+  if (['CB', 'FB', 'WB', 'DF', 'LB', 'RB'].indexOf(primaryPos) !== -1) return 'DF';
+  if (['GK'].indexOf(primaryPos) !== -1) return 'GK';
+  
+  return 'MF'; // 기본값
 }
 
 function updateMemberStatus() {
