@@ -36,15 +36,16 @@ function setupTriggers() {
 
 function handleFormSubmit(e) {
   try {
-    var values = e.values; // [타임스탬프, 성명, 소속, 등번호, 주포지션, 선호포지션, 주발]
+    var values = e.values; 
+    // 사용자 시트 순서: [0:타임스탬프, 1:성명, 2:소속기관, 3:희망 등번호, 4:주 포지션, 5:주발, 6:선호 포지션]
     if (!values) return;
     
     var name = values[1];
     var department = values[2];
     var number = values[3];
-    var mainPos = values[4];  // 주포지션 (예: WF, AMF)
-    var subPos = values[5];   // 선호포지션
-    var foot = values[6];     // 주발
+    var mainPos = values[4];
+    var foot = values[5];     // 주발 (5번 열)
+    var subPos = values[6];   // 선호 포지션 (6번 열)
     
     var sheet = getSheet(Config.SHEETS.REGISTRY);
     var newId = generateId(sheet);
