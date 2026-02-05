@@ -1,0 +1,11 @@
+# Google Apps Script
+.clasp.json
+.claspignore
+node_modules/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
