@@ -36,20 +36,39 @@ function setupTriggers() {
 
 function handleFormSubmit(e) {
   try {
-    var values = e.values; 
+    var values = e.values; // [타임스탬프, 성명, 소속, 등번호, 주포지션, 선호포지션, 주발]
     if (!values) return;
+    
     var name = values[1];
     var department = values[2];
     var number = values[3];
-    var mainPos = values[4];
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(Config.SHEETS.REGISTRY);
+    var mainPos = values[4];  // 주포지션 (예: WF, AMF)
+    var subPos = values[5];   // 선호포지션
+    var foot = values[6];     // 주발
+    
+    var sheet = getSheet(Config.SHEETS.REGISTRY);
     var newId = generateId(sheet);
-    var rowData = [newId, name, '회원', department, number, mainPos, '', 'R', Config.STATUS.ACTIVE, new Date()];
+    
+    // 시트에 새 회원 추가: [ID, 성명, 직급, 소속, 등번호, 주포, 선호, 주발, 상태, 가입일]
+    var rowData = [newId, name, '회원', department, number, mainPos, subPos, foot, Config.STATUS.ACTIVE, new Date()];
     sheet.appendRow(rowData);
-    logAction('FORM_SUBMIT', '신규 등록 완료: ' + name);
+    
+    logAction('FORM_SUBMIT', '신규 등록 완료: ' + name + ' (' + mainPos + ')');
   } catch (err) {
-    sendErrorEmail('handleFormSubmit 오류', err);
+    sendError(err, 'handleFormSubmit');
   }
+}
+
+/**
+ * 세부 포지션을 팀 배정용 대그룹(FW, MF, DF, GK)으로 변환합니다.
+ */
+function getPositionGroup(pos) {
+  var p = pos ? pos.toUpperCase() : 'MF';
+  if (['FW', 'WF', 'ST', 'SS'].indexOf(p) !== -1) return 'FW';
+  if (['AMF', 'CM', 'CDM', 'MF', 'RM', 'LM'].indexOf(p) !== -1) return 'MF';
+  if (['CB', 'FB', 'WB', 'DF', 'LB', 'RB'].indexOf(p) !== -1) return 'DF';
+  if (['GK'].indexOf(p) !== -1) return 'GK';
+  return 'MF';
 }
 
 function updateMemberStatus() {
