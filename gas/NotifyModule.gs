@@ -48,6 +48,7 @@ var NotifyModule = {
 
     } catch (error) {
       console.error('writePost 에러: ' + error.toString());
+      EmailModule.sendErrorAlert(error, 'NotifyModule.writePost');
       return false;
     }
   },

@@ -75,6 +75,7 @@ var ArchiveModule = {
 
     } catch (error) {
       console.error('createNewYearAttendance 에러: ' + error.toString());
+      EmailModule.sendErrorAlert(error, 'ArchiveModule.createNewYearAttendance');
       if (!isSilent) {
         SpreadsheetApp.getUi().alert('오류 발생: ' + error.toString());
       } else {

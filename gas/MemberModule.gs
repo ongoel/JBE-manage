@@ -61,7 +61,7 @@ function onFormSubmit(e) {
 
   } catch (error) {
     console.error('onFormSubmit 에러: ' + error.toString());
-    // 관리자에게 이메일 발송 등 에러 처리
+    EmailModule.sendErrorAlert(error, 'onFormSubmit');
   }
 }
 

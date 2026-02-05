@@ -37,6 +37,7 @@ function balanceTeams(memberIds) {
     
   } catch (error) {
     console.error('팀 밸런싱 오류: ' + error.toString());
+    EmailModule.sendErrorAlert(error, 'balanceTeams');
     throw error;
   }
 }
