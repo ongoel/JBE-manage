@@ -188,8 +188,7 @@ function doGet(e) {
 
 function createJSONOutput(content) {
   return ContentService.createTextOutput(JSON.stringify(content))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader("Access-Control-Allow-Origin", "*"); // CORS 해결
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ==========================================
