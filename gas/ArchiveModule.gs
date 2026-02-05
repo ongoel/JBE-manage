@@ -8,18 +8,26 @@ var ArchiveModule = {
    * 다음 연도의 출석부 시트를 자동으로 생성합니다.
    * 등록부의 활동 회원들을 새 시트로 이관합니다.
    */
-  createNewYearAttendance: function() {
+  createNewYearAttendance: function(isSilent) {
     try {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
       var nextYear = new Date().getFullYear() + 1;
       var newSheetName = Config.SHEETS.ATTENDANCE_PREFIX + nextYear;
 
       // 1. 이미 시트가 존재하는지 확인
-      if (ss.getSheetByName(newSheetName)) {
-        var ui = SpreadsheetApp.getUi();
-        var response = ui.alert('알림', newSheetName + ' 시트가 이미 존재합니다. 다시 생성하시겠습니까? (기존 데이터가 초기화될 수 있습니다.)', ui.ButtonSet.YES_NO);
-        if (response !== ui.Button.YES) return;
-        ss.deleteSheet(ss.getSheetByName(newSheetName));
+      var existingSheet = ss.getSheetByName(newSheetName);
+      if (existingSheet) {
+        if (isSilent) {
+          throw new Error(newSheetName + ' 시트가 이미 존재합니다. 작업을 중단합니다.');
+        } else {
+          var ui = SpreadsheetApp.getUi();
+          var response = ui.alert('알림', newSheetName + ' 시트가 이미 존재합니다. 다시 생성하시겠습니까? (기존 데이터가 초기화될 수 있습니다.)', ui.ButtonSet.YES_NO);
+          if (response !== ui.Button.YES) return;
+
+          // 기존 시트 백업
+          BackupModule.snapshotSheet(newSheetName);
+          ss.deleteSheet(existingSheet);
+        }
       }
 
       // 2. 새 시트 생성 및 헤더 설정
@@ -59,12 +67,19 @@ var ArchiveModule = {
       }
 
       // 5. 완료 알림
-      SpreadsheetApp.getUi().alert('완료', nextYear + '년도 출석부 시트가 생성되었습니다. 총 ' + membersToMigrate.length + '명이 이관되었습니다.');
+      var msg = nextYear + '년도 출석부 시트가 생성되었습니다. 총 ' + membersToMigrate.length + '명이 이관되었습니다.';
+      if (!isSilent) {
+        SpreadsheetApp.getUi().alert('완료', msg);
+      }
       console.log(newSheetName + ' 생성 및 ' + membersToMigrate.length + '명 이관 완료');
 
     } catch (error) {
       console.error('createNewYearAttendance 에러: ' + error.toString());
-      SpreadsheetApp.getUi().alert('오류 발생: ' + error.toString());
+      if (!isSilent) {
+        SpreadsheetApp.getUi().alert('오류 발생: ' + error.toString());
+      } else {
+        throw error; // Silent 모드에서는 에러를 던져서 호출자가 처리하게 함
+      }
     }
   },
 
