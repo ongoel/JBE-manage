@@ -6,17 +6,44 @@
 var AttendanceStats = {
   /**
    * 활동 회원을 정의하고 필터링합니다.
-   * 기준: 최근 3개월 이내 1회 이상 출석한 회원 (또는 신규 회원)
+   * 기준: 최근 3개월 이내 1회 이상 출석한 회원
+   * @returns {Array} 활동 회원 ID 배열
    */
   getActiveMembers: function() {
-    var sheet = Utils.getSheetByName(Config.SHEETS.REGISTRY);
-    var attendanceSheet = Utils.getSheetByName(Utils.getCurrentYearAttendanceSheetName());
-    if (!sheet || !attendanceSheet) return [];
-
-    var members = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
-    // 실제 운영 시에는 출석부 시트의 데이터를 분석하여 활동 여부를 판단하는 로직 추가 필요
-    // 현재는 '활동' 상태인 모든 회원을 반환하는 것으로 기초 구현
-    return members.filter(r => r[8] === Config.MEMBER_STATUS.ACTIVE);
+    try {
+      var attendanceSheet = Utils.getSheetByName(Utils.getCurrentYearAttendanceSheetName());
+      if (!attendanceSheet || attendanceSheet.getLastRow() < 2) return [];
+      
+      var threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      
+      var headers = attendanceSheet.getRange(1, 1, 1, attendanceSheet.getLastColumn()).getValues()[0];
+      var memberIds = attendanceSheet.getRange(2, 1, attendanceSheet.getLastRow() - 1, 1).getValues().flat();
+      var activeMembers = [];
+      
+      // 각 회원별로 최근 3개월 출석 여부 확인
+      for (var i = 0; i < memberIds.length; i++) {
+        var rowData = attendanceSheet.getRange(i + 2, 1, 1, attendanceSheet.getLastColumn()).getValues()[0];
+        var hasAttended = false;
+        
+        // 날짜 열부터 확인 (보통 4열부터 날짜 시작)
+        for (var j = 3; j < headers.length; j++) {
+          if (headers[j] && headers[j] instanceof Date && headers[j] >= threeMonthsAgo) {
+            if (rowData[j] === 1 || rowData[j] === '1') {
+              hasAttended = true;
+              break;
+            }
+          }
+        }
+        
+        if (hasAttended) activeMembers.push(memberIds[i]);
+      }
+      
+      return activeMembers;
+    } catch (e) {
+      Logger.log('getActiveMembers error: ' + e.toString());
+      return [];
+    }
   },
 
   /**
@@ -25,20 +52,63 @@ var AttendanceStats = {
    * @returns {number} 출석률 (%)
    */
   getMonthlyAttendanceRate: function(month) {
-    var attendanceSheet = Utils.getSheetByName(Utils.getCurrentYearAttendanceSheetName());
-    if (!attendanceSheet) return 0;
-
-    // 출석부 시트 구조에 따라 월별 열 범위를 찾아 계산 (현재는 Mock 데이터용 구조 제공)
-    // 실제 구현 시에는 특정 월의 열들을 합산하여 활동 회원 수로 나눔
-    return Math.floor(Math.random() * (85 - 60) + 60); // 60~85% 사이 랜덤 반환 (UI 테스트용)
+    try {
+      var attendanceSheet = Utils.getSheetByName(Utils.getCurrentYearAttendanceSheetName());
+      if (!attendanceSheet || attendanceSheet.getLastRow() < 2) return 0;
+      
+      var activeMembers = this.getActiveMembers();
+      if (activeMembers.length === 0) return 0;
+      
+      var headers = attendanceSheet.getRange(1, 1, 1, attendanceSheet.getLastColumn()).getValues()[0];
+      var totalAttendance = 0;
+      var dateCount = 0;
+      
+      // 해당 월의 날짜 열 찾기
+      for (var j = 3; j < headers.length; j++) {
+        if (headers[j] && headers[j] instanceof Date && headers[j].getMonth() + 1 === month) {
+          dateCount++;
+          var columnData = attendanceSheet.getRange(2, j + 1, attendanceSheet.getLastRow() - 1, 1).getValues().flat();
+          var dayAttendance = columnData.filter(function(val) { return val === 1 || val === '1'; }).length;
+          totalAttendance += dayAttendance;
+        }
+      }
+      
+      if (dateCount === 0) return 0;
+      return Math.round((totalAttendance / (activeMembers.length * dateCount)) * 100);
+    } catch (e) {
+      Logger.log('getMonthlyAttendanceRate error: ' + e.toString());
+      return 0;
+    }
   },
 
   /**
    * 최근 6개월간의 출석 추이를 반환합니다 (그래프용).
+   * @returns {Object} {labels: [], data: []}
    */
   getAttendanceTrend: function() {
-    var labels = ['9월', '10월', '11월', '12월', '1월', '2월'];
-    var data = labels.map(() => Math.floor(Math.random() * (90 - 50) + 50));
-    return { labels: labels, data: data };
+    try {
+      var labels = [];
+      var data = [];
+      var currentDate = new Date();
+      
+      // 최근 6개월 데이터 수집
+      for (var i = 5; i >= 0; i--) {
+        var targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        var monthName = (targetDate.getMonth() + 1) + '월';
+        labels.push(monthName);
+        
+        var rate = this.getMonthlyAttendanceRate(targetDate.getMonth() + 1);
+        data.push(rate);
+      }
+      
+      return { labels: labels, data: data };
+    } catch (e) {
+      Logger.log('getAttendanceTrend error: ' + e.toString());
+      // 오류 시 더미 데이터 반환
+      return {
+        labels: ['9월', '10월', '11월', '12월', '1월', '2월'],
+        data: [0, 0, 0, 0, 0, 0]
+      };
+    }
   }
 };

@@ -153,19 +153,60 @@ var AuthModule = {
 };
 
 // ==========================================
-// 3. 출석 통계 모듈 (AttendanceStats)
+// 3. 출석 통계 모듈 (AttendanceStats) - 실데이터 연동
 // ==========================================
 
 var AttendanceStats = {
+  getActiveMembers: function() {
+    try {
+      var attendanceSheet = Utils.getSheetByName(Utils.getCurrentYearAttendanceSheetName());
+      if (!attendanceSheet || attendanceSheet.getLastRow() < 2) return [];
+      var threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      var headers = attendanceSheet.getRange(1, 1, 1, attendanceSheet.getLastColumn()).getValues()[0];
+      var memberIds = attendanceSheet.getRange(2, 1, attendanceSheet.getLastRow() - 1, 1).getValues().flat();
+      var activeMembers = [];
+      for (var i = 0; i < memberIds.length; i++) {
+        var rowData = attendanceSheet.getRange(i + 2, 1, 1, attendanceSheet.getLastColumn()).getValues()[0];
+        var hasAttended = false;
+        for (var j = 3; j < headers.length; j++) {
+          if (headers[j] && headers[j] instanceof Date && headers[j] >= threeMonthsAgo) {
+            if (rowData[j] === 1 || rowData[j] === '1') { hasAttended = true; break; }
+          }
+        }
+        if (hasAttended) activeMembers.push(memberIds[i]);
+      }
+      return activeMembers;
+    } catch (e) { return []; }
+  },
   getMonthlyAttendanceRate: function(month) {
-    // 임시: 60~90% 사이 랜덤값 (추후 시트 연동)
-    return Math.floor(Math.random() * 31) + 60;
+    try {
+      var attendanceSheet = Utils.getSheetByName(Utils.getCurrentYearAttendanceSheetName());
+      if (!attendanceSheet || attendanceSheet.getLastRow() < 2) return 0;
+      var activeMembers = this.getActiveMembers();
+      if (activeMembers.length === 0) return 0;
+      var headers = attendanceSheet.getRange(1, 1, 1, attendanceSheet.getLastColumn()).getValues()[0];
+      var totalAttendance = 0, dateCount = 0;
+      for (var j = 3; j < headers.length; j++) {
+        if (headers[j] && headers[j] instanceof Date && headers[j].getMonth() + 1 === month) {
+          dateCount++;
+          var columnData = attendanceSheet.getRange(2, j + 1, attendanceSheet.getLastRow() - 1, 1).getValues().flat();
+          totalAttendance += columnData.filter(v => v === 1 || v === '1').length;
+        }
+      }
+      return dateCount === 0 ? 0 : Math.round((totalAttendance / (activeMembers.length * dateCount)) * 100);
+    } catch (e) { return 0; }
   },
   getAttendanceTrend: function() {
-    return {
-      labels: ['9월', '10월', '11월', '12월', '1월', '2월'],
-      data: [65, 72, 68, 85, 80, 88]
-    };
+    try {
+      var labels = [], data = [], currentDate = new Date();
+      for (var i = 5; i >= 0; i--) {
+        var targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        labels.push((targetDate.getMonth() + 1) + '월');
+        data.push(this.getMonthlyAttendanceRate(targetDate.getMonth() + 1));
+      }
+      return { labels: labels, data: data };
+    } catch (e) { return { labels: ['9월', '10월', '11월', '12월', '1월', '2월'], data: [0,0,0,0,0,0] }; }
   }
 };
 
