@@ -119,3 +119,13 @@ footer {
         font-size: 0.9em;
     }
 }
+
+/* Rank Badge ✅ */
+.rank-badge {
+    background-color: var(--background-color);
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    color: var(--secondary-color);
+    border: 1px solid var(--border-color);
+}

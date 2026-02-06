@@ -37,13 +37,14 @@ function onFormSubmit(e) {
     var joinDate = Utils.formatDate(new Date());
 
     // 4. 등록부 시트에 추가
-    // 순서: [ID, 성명, 소속, 등번호, 주포지션, 선호포지션, 주발, 상태, 가입일]
+    // 순서: [ID, 성명, 직급, 소속, 등번호, 주포지션, 선호포지션, 주발, 상태, 가입일]
     var rowData = [
       newId,
       name,
+      '일반', // 신규 회원은 기본 '일반'
       department,
       backNumber,
-      mainPos,
+      mainPos, // 콤마로 구분된 최대 3개 (구글 폼 설정 변경 전제)
       subPos,
       foot,
       Config.MEMBER_STATUS.ACTIVE, // 기본 상태: 활동

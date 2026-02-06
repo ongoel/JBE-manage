@@ -52,12 +52,19 @@ var Config = {
     get BAND_KEY() { return PropertiesService.getScriptProperties().getProperty('BAND_BAND_KEY'); }
   },
 
+  // 직급 정렬 순서 (낮을수록 우선순위 높음) ✅
+  RANK_HIERARCHY: {
+    '명예회원': 1,
+    '회장': 2,
+    '감독': 3,
+    '수석총무': 4,
+    '기획총무': 5,
+    '총무': 6,
+    '코치': 7,
+    '홍보': 8,
+    '일반': 9
+  },
+
   /**
    * 보안 속성을 가져옵니다.
-   * @param {string} key 속성 키
-   * @returns {string} 속성 값
-   */
-  getSecureProperty: function(key) {
-    return PropertiesService.getScriptProperties().getProperty(key);
-  }
 };
