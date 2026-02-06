@@ -84,6 +84,21 @@ function doGet(e) {
         } 
       });
     }
+
+    if (action === 'getEvaluation') {
+      var memberId = e.parameter.memberId;
+      if (!memberId) return createJSONOutput({ status: 'error', message: '회원 ID가 필요합니다.' });
+      var avgScores = EvaluationModule.getMemberAverageScores(memberId);
+      return createJSONOutput({ status: 'success', data: avgScores });
+    }
+
+    if (action === 'getAttendees') {
+      var dateStr = e.parameter.date;
+      if (!dateStr) return createJSONOutput({ status: 'error', message: '날짜가 필요합니다.' });
+      var gameDate = new Date(dateStr);
+      var attendees = EvaluationModule.getAttendees(gameDate);
+      return createJSONOutput({ status: 'success', data: attendees });
+    }
   } catch (err) {
     return createJSONOutput({ status: 'error', message: err.toString() });
   }
@@ -102,6 +117,22 @@ function doPost(e) {
       case 'addMember': result = handleAddMember(params, session.username); break;
       case 'updateMember': result = handleUpdateMember(params, session.username); break;
       case 'sortMembers': result = handleSortMembers(session.username); break;
+      case 'saveEvaluation': 
+        result = EvaluationModule.saveEvaluation({
+          date: params.date ? new Date(params.date) : new Date(),
+          memberId: params.memberId,
+          memberName: params.memberName,
+          attack: params.attack,
+          defense: params.defense,
+          pass: params.pass,
+          teamwork: params.teamwork,
+          stamina: params.stamina,
+          mentality: params.mentality,
+          skill: params.skill,
+          tactics: params.tactics,
+          evaluator: session.username
+        });
+        break;
       default: result = { success: false, message: '알 수 없는 액션' };
     }
     return createJSONOutput(result);

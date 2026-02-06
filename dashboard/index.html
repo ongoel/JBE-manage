@@ -85,6 +85,80 @@
             </div>
         </section>
 
+        <section class="evaluation-section" id="evaluation-section" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h3>⚽ 경기 평가</h3>
+                </div>
+
+                <!-- 평가 입력 폼 -->
+                <div class="evaluation-form" id="evaluation-form">
+                    <div class="input-group">
+                        <label for="eval-date">경기 날짜</label>
+                        <input type="date" id="eval-date" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="eval-member">선수 선택</label>
+                        <select id="eval-member" required>
+                            <option value="">선수를 선택하세요</option>
+                        </select>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <label>공격력 (1-10)</label>
+                            <input type="number" id="metric-attack" min="1" max="10" value="5">
+                        </div>
+                        <div class="metric-item">
+                            <label>수비력 (1-10)</label>
+                            <input type="number" id="metric-defense" min="1" max="10" value="5">
+                        </div>
+                        <div class="metric-item">
+                            <label>패스능력 (1-10)</label>
+                            <input type="number" id="metric-pass" min="1" max="10" value="5">
+                        </div>
+                        <div class="metric-item">
+                            <label>팀워크 (1-10)</label>
+                            <input type="number" id="metric-teamwork" min="1" max="10" value="5">
+                        </div>
+                        <div class="metric-item">
+                            <label>체력 (1-10)</label>
+                            <input type="number" id="metric-stamina" min="1" max="10" value="5">
+                        </div>
+                        <div class="metric-item">
+                            <label>정신력 (1-10)</label>
+                            <input type="number" id="metric-mentality" min="1" max="10" value="5">
+                        </div>
+                        <div class="metric-item">
+                            <label>기술 (1-10)</label>
+                            <input type="number" id="metric-skill" min="1" max="10" value="5">
+                        </div>
+                        <div class="metric-item">
+                            <label>전술이해도 (1-10)</label>
+                            <input type="number" id="metric-tactics" min="1" max="10" value="5">
+                        </div>
+                    </div>
+
+                    <button id="save-evaluation-btn" class="btn-primary">평가 저장</button>
+                </div>
+
+                <!-- 선수 평가 조회 및 레이더 차트 -->
+                <div class="evaluation-view" style="margin-top: 30px;">
+                    <h4>선수별 평가 조회</h4>
+                    <div class="input-group">
+                        <select id="view-member">
+                            <option value="">선수를 선택하세요</option>
+                        </select>
+                        <button id="view-evaluation-btn" class="btn-secondary">조회</button>
+                    </div>
+                    <div class="radar-chart-container" style="margin-top: 20px; display: none;">
+                        <canvas id="radarChart" height="300"></canvas>
+                        <div id="evaluation-stats" class="evaluation-stats"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <footer>
             <p>&copy; 2026 JBE Manager</p>
         </footer>

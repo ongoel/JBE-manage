@@ -8,16 +8,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let sessionToken = localStorage.getItem('sessionToken');
+let currentMembers = []; // 회원 목록 캐시
 
 function initAuth() {
     const loginForm = document.getElementById('login-form');
     const logoutBtn = document.getElementById('logout-btn');
+    const saveEvalBtn = document.getElementById('save-evaluation-btn');
+    const viewEvalBtn = document.getElementById('view-evaluation-btn');
 
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
     }
     if (logoutBtn) {
         logoutBtn.addEventListener('click', handleLogout);
+    }
+    if (saveEvalBtn) {
+        saveEvalBtn.addEventListener('click', handleSaveEvaluation);
+    }
+    if (viewEvalBtn) {
+        viewEvalBtn.addEventListener('click', handleViewEvaluation);
     }
 
     if (sessionToken) {
@@ -63,11 +72,13 @@ function handleLogout() {
 function showMemberSection() {
     document.getElementById('auth-section').style.display = 'none';
     document.getElementById('member-section').style.display = 'block';
+    document.getElementById('evaluation-section').style.display = 'block';
 }
 
 function hideMemberSection() {
     document.getElementById('auth-section').style.display = 'block';
     document.getElementById('member-section').style.display = 'none';
+    document.getElementById('evaluation-section').style.display = 'none';
 }
 
 async function fetchSummary() {
@@ -165,6 +176,9 @@ function renderMembers(members) {
         `;
         tableBody.appendChild(tr);
     });
+
+    // 평가 폼의 선수 목록도 업데이트
+    updateEvaluationMemberList(members);
 }
 
 function getStatusClass(status) {
@@ -172,4 +186,166 @@ function getStatusClass(status) {
     if (status === '휴면') return 'dormant';
     if (status === '탈퇴') return 'withdrawn';
     return 'unknown';
+}
+
+// ==========================================
+// 경기 평가 기능
+// ==========================================
+
+function updateEvaluationMemberList(members) {
+    currentMembers = members;
+    const evalMemberSelect = document.getElementById('eval-member');
+    const viewMemberSelect = document.getElementById('view-member');
+
+    // 기존 옵션 제거 (첫 번째 옵션 제외)
+    evalMemberSelect.innerHTML = '<option value="">선수를 선택하세요</option>';
+    viewMemberSelect.innerHTML = '<option value="">선수를 선택하세요</option>';
+
+    // 활동 중인 회원만 추가
+    members.filter(m => m.status === '활동').forEach(member => {
+        const option1 = document.createElement('option');
+        option1.value = member.id;
+        option1.textContent = `${member.name} (${member.mainPos || '-'})`;
+        option1.dataset.name = member.name;
+        evalMemberSelect.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = member.id;
+        option2.textContent = `${member.name} (${member.mainPos || '-'})`;
+        option2.dataset.name = member.name;
+        viewMemberSelect.appendChild(option2);
+    });
+}
+
+async function handleSaveEvaluation() {
+    const date = document.getElementById('eval-date').value;
+    const memberSelect = document.getElementById('eval-member');
+    const memberId = memberSelect.value;
+    const memberName = memberSelect.options[memberSelect.selectedIndex]?.dataset.name;
+
+    if (!date || !memberId) {
+        alert('경기 날짜와 선수를 선택해주세요.');
+        return;
+    }
+
+    const evaluationData = {
+        action: 'saveEvaluation',
+        token: sessionToken,
+        date: date,
+        memberId: memberId,
+        memberName: memberName,
+        attack: parseInt(document.getElementById('metric-attack').value),
+        defense: parseInt(document.getElementById('metric-defense').value),
+        pass: parseInt(document.getElementById('metric-pass').value),
+        teamwork: parseInt(document.getElementById('metric-teamwork').value),
+        stamina: parseInt(document.getElementById('metric-stamina').value),
+        mentality: parseInt(document.getElementById('metric-mentality').value),
+        skill: parseInt(document.getElementById('metric-skill').value),
+        tactics: parseInt(document.getElementById('metric-tactics').value)
+    };
+
+    try {
+        const response = await fetch(GAS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify(evaluationData)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            alert('평가가 저장되었습니다!');
+            // 입력 폼 초기화
+            document.querySelectorAll('.metric-item input').forEach(input => input.value = 5);
+        } else {
+            alert('저장 실패: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Save evaluation error:', error);
+        alert('평가 저장 중 오류가 발생했습니다.');
+    }
+}
+
+async function handleViewEvaluation() {
+    const memberSelect = document.getElementById('view-member');
+    const memberId = memberSelect.value;
+    const memberName = memberSelect.options[memberSelect.selectedIndex]?.textContent;
+
+    if (!memberId) {
+        alert('선수를 선택해주세요.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${GAS_API_URL}?action=getEvaluation&token=${sessionToken}&memberId=${memberId}`);
+        const json = await response.json();
+
+        if (json.status === 'success') {
+            renderRadarChart(json.data, memberName);
+            document.querySelector('.radar-chart-container').style.display = 'block';
+        } else {
+            alert('조회 실패: ' + json.message);
+        }
+    } catch (error) {
+        console.error('View evaluation error:', error);
+        alert('평가 조회 중 오류가 발생했습니다.');
+    }
+}
+
+let radarChartInstance = null;
+
+function renderRadarChart(data, memberName) {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+
+    // 기존 차트 제거
+    if (radarChartInstance) {
+        radarChartInstance.destroy();
+    }
+
+    radarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['공격력', '수비력', '패스능력', '팀워크', '체력', '정신력', '기술', '전술이해도'],
+            datasets: [{
+                label: memberName || '선수 평가',
+                data: [
+                    data.attack, data.defense, data.pass, data.teamwork,
+                    data.stamina, data.mentality, data.skill, data.tactics
+                ],
+                backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                borderColor: 'rgba(52, 152, 219, 1)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(52, 152, 219, 1)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgba(52, 152, 219, 1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 10,
+                    ticks: {
+                        stepSize: 2
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            }
+        }
+    });
+
+    // 통계 정보 표시
+    const statsDiv = document.getElementById('evaluation-stats');
+    statsDiv.innerHTML = `
+        <p><strong>종합 점수:</strong> ${data.totalScore} / 10</p>
+        <p><strong>평가 횟수:</strong> ${data.evaluationCount}회</p>
+        <p style="font-size: 0.85em; color: #7f8c8d; margin-top: 10px;">
+            * 평균 점수는 모든 평가의 평균값입니다.
+        </p>
+    `;
 }
