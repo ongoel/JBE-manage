@@ -99,6 +99,13 @@ function doGet(e) {
       var attendees = EvaluationModule.getAttendees(gameDate);
       return createJSONOutput({ status: 'success', data: attendees });
     }
+
+    if (action === 'getAttendeesWithScores') {
+      var dateStr = e.parameter.date;
+      if (!dateStr) return createJSONOutput({ status: 'error', message: '날짜가 필요합니다.' });
+      var attendees = TeamModule.getAttendeesWithScores(dateStr);
+      return createJSONOutput({ status: 'success', data: attendees });
+    }
   } catch (err) {
     return createJSONOutput({ status: 'error', message: err.toString() });
   }
@@ -132,6 +139,9 @@ function doPost(e) {
           tactics: params.tactics,
           evaluator: session.username
         });
+        break;
+      case 'markAttendanceFromVote':
+        result = BandModule.markAttendance(params.date, BandModule.parseVoteText(params.rawText));
         break;
       default: result = { success: false, message: '알 수 없는 액션' };
     }

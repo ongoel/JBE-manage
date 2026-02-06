@@ -107,35 +107,123 @@
                     <div class="metrics-grid">
                         <div class="metric-item">
                             <label>공격력 (1-10)</label>
-                            <input type="number" id="metric-attack" min="1" max="10" value="5">
+                            <select id="metric-attack">
+                                <option value="1">1점</option>
+                                <option value="2">2점</option>
+                                <option value="3">3점</option>
+                                <option value="4">4점</option>
+                                <option value="5" selected>5점</option>
+                                <option value="6">6점</option>
+                                <option value="7">7점</option>
+                                <option value="8">8점</option>
+                                <option value="9">9점</option>
+                                <option value="10">10점</option>
+                            </select>
                         </div>
                         <div class="metric-item">
                             <label>수비력 (1-10)</label>
-                            <input type="number" id="metric-defense" min="1" max="10" value="5">
+                            <select id="metric-defense">
+                                <option value="1">1점</option>
+                                <option value="2">2점</option>
+                                <option value="3">3점</option>
+                                <option value="4">4점</option>
+                                <option value="5" selected>5점</option>
+                                <option value="6">6점</option>
+                                <option value="7">7점</option>
+                                <option value="8">8점</option>
+                                <option value="9">9점</option>
+                                <option value="10">10점</option>
+                            </select>
                         </div>
                         <div class="metric-item">
                             <label>패스능력 (1-10)</label>
-                            <input type="number" id="metric-pass" min="1" max="10" value="5">
+                            <select id="metric-pass">
+                                <option value="1">1점</option>
+                                <option value="2">2점</option>
+                                <option value="3">3점</option>
+                                <option value="4">4점</option>
+                                <option value="5" selected>5점</option>
+                                <option value="6">6점</option>
+                                <option value="7">7점</option>
+                                <option value="8">8점</option>
+                                <option value="9">9점</option>
+                                <option value="10">10점</option>
+                            </select>
                         </div>
                         <div class="metric-item">
                             <label>팀워크 (1-10)</label>
-                            <input type="number" id="metric-teamwork" min="1" max="10" value="5">
+                            <select id="metric-teamwork">
+                                <option value="1">1점</option>
+                                <option value="2">2점</option>
+                                <option value="3">3점</option>
+                                <option value="4">4점</option>
+                                <option value="5" selected>5점</option>
+                                <option value="6">6점</option>
+                                <option value="7">7점</option>
+                                <option value="8">8점</option>
+                                <option value="9">9점</option>
+                                <option value="10">10점</option>
+                            </select>
                         </div>
                         <div class="metric-item">
                             <label>체력 (1-10)</label>
-                            <input type="number" id="metric-stamina" min="1" max="10" value="5">
+                            <select id="metric-stamina">
+                                <option value="1">1점</option>
+                                <option value="2">2점</option>
+                                <option value="3">3점</option>
+                                <option value="4">4점</option>
+                                <option value="5" selected>5점</option>
+                                <option value="6">6점</option>
+                                <option value="7">7점</option>
+                                <option value="8">8점</option>
+                                <option value="9">9점</option>
+                                <option value="10">10점</option>
+                            </select>
                         </div>
                         <div class="metric-item">
                             <label>정신력 (1-10)</label>
-                            <input type="number" id="metric-mentality" min="1" max="10" value="5">
+                            <select id="metric-mentality">
+                                <option value="1">1점</option>
+                                <option value="2">2점</option>
+                                <option value="3">3점</option>
+                                <option value="4">4점</option>
+                                <option value="5" selected>5점</option>
+                                <option value="6">6점</option>
+                                <option value="7">7점</option>
+                                <option value="8">8점</option>
+                                <option value="9">9점</option>
+                                <option value="10">10점</option>
+                            </select>
                         </div>
                         <div class="metric-item">
                             <label>기술 (1-10)</label>
-                            <input type="number" id="metric-skill" min="1" max="10" value="5">
+                            <select id="metric-skill">
+                                <option value="1">1점</option>
+                                <option value="2">2점</option>
+                                <option value="3">3점</option>
+                                <option value="4">4점</option>
+                                <option value="5" selected>5점</option>
+                                <option value="6">6점</option>
+                                <option value="7">7점</option>
+                                <option value="8">8점</option>
+                                <option value="9">9점</option>
+                                <option value="10">10점</option>
+                            </select>
                         </div>
                         <div class="metric-item">
                             <label>전술이해도 (1-10)</label>
-                            <input type="number" id="metric-tactics" min="1" max="10" value="5">
+                            <select id="metric-tactics">
+                                <option value="1">1점</option>
+                                <option value="2">2점</option>
+                                <option value="3">3점</option>
+                                <option value="4">4점</option>
+                                <option value="5" selected>5점</option>
+                                <option value="6">6점</option>
+                                <option value="7">7점</option>
+                                <option value="8">8점</option>
+                                <option value="9">9점</option>
+                                <option value="10">10점</option>
+                            </select>
                         </div>
                     </div>
 
@@ -155,6 +243,63 @@
                         <canvas id="radarChart" height="300"></canvas>
                         <div id="evaluation-stats" class="evaluation-stats"></div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="band-vote-section" id="band-vote-section" style="display: none; margin-top: 40px;">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📢 밴드 투표 결과 반영</h3>
+                </div>
+                <div class="input-group">
+                    <label for="vote-date">경기 날짜</label>
+                    <input type="date" id="vote-date" required>
+                </div>
+                <div class="input-group" style="margin-top: 15px;">
+                    <label for="vote-text">참석자 명단 복사-붙여넣기</label>
+                    <textarea id="vote-text" rows="5"
+                        placeholder="밴드 앱에서 복사한 참석자 명단을 여기에 붙여넣으세요. (이름, 이름, 이름...)"></textarea>
+                </div>
+                <button id="import-vote-btn" class="btn-primary">출석부 반영하기</button>
+                <div id="vote-result-msg" style="margin-top: 15px; font-size: 0.9em;"></div>
+            </div>
+        </section>
+
+        <section class="team-balancing-section" id="team-balancing-section" style="display: none; margin-top: 40px;">
+            <div class="card">
+                <div class="card-header">
+                    <h3>⚖️ 팀 밸런싱 (자동 배정)</h3>
+                </div>
+                <div class="balancing-controls" style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div class="input-group">
+                        <label for="balance-date">경기 날짜</label>
+                        <input type="date" id="balance-date" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="team-count">팀 수</label>
+                        <select id="team-count">
+                            <option value="2">2팀 (A vs B)</option>
+                            <option value="3">3팀 (A vs B vs C)</option>
+                            <option value="4">4팀 (A vs B vs C vs D)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="balance-mode">배정 모드</label>
+                        <select id="balance-mode">
+                            <option value="balanced">실력+포지션 밸런스</option>
+                            <option value="random">완전 랜덤</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="action-buttons" style="margin-bottom: 20px;">
+                    <button id="generate-teams-btn" class="btn-primary">팀 배정 생성하기</button>
+                    <button id="reset-teams-btn" class="btn-secondary" style="display: none;">초기화</button>
+                </div>
+
+                <!-- 팀 결과 표시 영역 -->
+                <div id="teams-container" class="teams-grid" style="display: none;">
+                    <!-- JavaScript에서 팀 카드가 생성됨 -->
                 </div>
             </div>
         </section>

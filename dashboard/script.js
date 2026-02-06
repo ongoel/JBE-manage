@@ -15,6 +15,8 @@ function initAuth() {
     const logoutBtn = document.getElementById('logout-btn');
     const saveEvalBtn = document.getElementById('save-evaluation-btn');
     const viewEvalBtn = document.getElementById('view-evaluation-btn');
+    const importVoteBtn = document.getElementById('import-vote-btn');
+    const generateTeamsBtn = document.getElementById('generate-teams-btn');
 
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
@@ -27,6 +29,12 @@ function initAuth() {
     }
     if (viewEvalBtn) {
         viewEvalBtn.addEventListener('click', handleViewEvaluation);
+    }
+    if (importVoteBtn) {
+        importVoteBtn.addEventListener('click', handleImportVote);
+    }
+    if (generateTeamsBtn) {
+        generateTeamsBtn.addEventListener('click', handleGenerateTeams);
     }
 
     if (sessionToken) {
@@ -73,12 +81,16 @@ function showMemberSection() {
     document.getElementById('auth-section').style.display = 'none';
     document.getElementById('member-section').style.display = 'block';
     document.getElementById('evaluation-section').style.display = 'block';
+    document.getElementById('band-vote-section').style.display = 'block';
+    document.getElementById('team-balancing-section').style.display = 'block';
 }
 
 function hideMemberSection() {
     document.getElementById('auth-section').style.display = 'block';
     document.getElementById('member-section').style.display = 'none';
     document.getElementById('evaluation-section').style.display = 'none';
+    document.getElementById('band-vote-section').style.display = 'none';
+    document.getElementById('team-balancing-section').style.display = 'none';
 }
 
 async function fetchSummary() {
@@ -254,7 +266,7 @@ async function handleSaveEvaluation() {
         if (result.success) {
             alert('평가가 저장되었습니다!');
             // 입력 폼 초기화
-            document.querySelectorAll('.metric-item input').forEach(input => input.value = 5);
+            document.querySelectorAll('.metric-item select').forEach(select => select.value = "5");
         } else {
             alert('저장 실패: ' + result.message);
         }
@@ -348,4 +360,162 @@ function renderRadarChart(data, memberName) {
             * 평균 점수는 모든 평가의 평균값입니다.
         </p>
     `;
+}
+
+async function handleImportVote() {
+    const date = document.getElementById('vote-date').value;
+    const rawText = document.getElementById('vote-text').value;
+    const resultMsg = document.getElementById('vote-result-msg');
+
+    if (!date || !rawText) {
+        alert('경기 날짜와 명단 텍스트를 입력해주세요.');
+        return;
+    }
+
+    resultMsg.innerHTML = '⏳ 처리 중...';
+    resultMsg.style.color = '#3498db';
+
+    try {
+        const response = await fetch(GAS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'markAttendanceFromVote',
+                token: sessionToken,
+                date: date,
+                rawText: rawText
+            })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            let msg = `✅ 성공: ${result.updatedCount}명 처리 완료`;
+            if (result.notFound && result.notFound.length > 0) {
+                msg += `<br>⚠️ 미등록 명단: <span style="color: #e74c3c;">${result.notFound.join(', ')}</span>`;
+            }
+            resultMsg.innerHTML = msg;
+            resultMsg.style.color = '#27ae60';
+            // 텍스트 영역 비우기
+            document.getElementById('vote-text').value = '';
+            // 목록 새로고침
+            fetchMembers();
+        } else {
+            resultMsg.innerHTML = '❌ 오류: ' + result.message;
+            resultMsg.style.color = '#e74c3c';
+        }
+    } catch (error) {
+        console.error('Import vote error:', error);
+        resultMsg.innerHTML = '❌ 네트워크 오류가 발생했습니다.';
+        resultMsg.style.color = '#e74c3c';
+    }
+}
+
+// ==========================================
+// 팀 밸런싱 기능
+// ==========================================
+
+async function handleGenerateTeams() {
+    const date = document.getElementById('balance-date').value;
+    const teamCount = parseInt(document.getElementById('team-count').value);
+    const mode = document.getElementById('balance-mode').value;
+    const container = document.getElementById('teams-container');
+
+    if (!date) {
+        alert('경기 날짜를 선택해주세요.');
+        return;
+    }
+
+    container.innerHTML = '<div class="loading">⏳ 팀 배정 구성 중...</div>';
+    container.style.display = 'grid';
+
+    try {
+        // 서버에서 상세 데이터(평가 점수 포함) 가져오기
+        const response = await fetch(`${GAS_API_URL}?action=getAttendeesWithScores&token=${sessionToken}&date=${date}`);
+        const json = await response.json();
+
+        if (json.status !== 'success') {
+            throw new Error(json.message);
+        }
+
+        const players = json.data;
+        if (players.length === 0) {
+            container.innerHTML = '<div class="card" style="grid-column: 1/-1; text-align: center; color: #e74c3c;">해당 날짜에 참석자가 없습니다.</div>';
+            return;
+        }
+
+        // 팀 나누기 로직 실행 (서버 TeamModule.balanceAndDistribute와 동일한 로직을 클라이언트에서도 수행)
+        const teams = divideTeams(players, teamCount, mode);
+        renderTeams(teams);
+
+    } catch (error) {
+        console.error('Generate teams error:', error);
+        container.innerHTML = `<div class="card" style="grid-column: 1/-1; text-align: center; color: #e74c3c;">오류 발생: ${error.message}</div>`;
+    }
+}
+
+/**
+ * 클라이언트 측 팀 분배 로직 (스네이크 드래프트)
+ */
+function divideTeams(players, teamCount, mode) {
+    if (mode === 'random') {
+        // 셔플
+        for (let i = players.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [players[i], players[j]] = [players[j], players[i]];
+        }
+    } else {
+        // 밸런스 모드: 점수 기반 정렬
+        players.sort((a, b) => {
+            const valB = (b.totalScore || 5) + (b.rank === '회장' || b.rank === '감독' ? 1 : 0);
+            const valA = (a.totalScore || 5) + (a.rank === '회장' || a.rank === '감독' ? 1 : 0);
+            return valB - valA;
+        });
+    }
+
+    const teams = Array.from({ length: teamCount }, () => []);
+    players.forEach((player, index) => {
+        let teamIndex;
+        if (mode === 'random') {
+            teamIndex = index % teamCount;
+        } else {
+            // 스네이크 드래프트
+            const round = Math.floor(index / teamCount);
+            teamIndex = (round % 2 === 0) ? (index % teamCount) : (teamCount - 1 - (index % teamCount));
+        }
+        teams[teamIndex].push(player);
+    });
+
+    return teams;
+}
+
+function renderTeams(teams) {
+    const container = document.getElementById('teams-container');
+    container.innerHTML = '';
+
+    teams.forEach((team, i) => {
+        const teamCard = document.createElement('div');
+        teamCard.className = `team-card team-${i}`;
+
+        const teamName = String.fromCharCode(65 + i); // A, B, C, D
+        const teamTotalScore = team.reduce((sum, p) => sum + (p.totalScore || 5), 0);
+        const avgScore = (teamTotalScore / team.length).toFixed(1);
+
+        teamCard.innerHTML = `
+            <h4>
+                <span>${teamName}팀 (${team.length}명)</span>
+                <span class="player-score" style="color: #555; font-size: 0.8em;">평균 ${avgScore}점</span>
+            </h4>
+            <ul class="player-list">
+                ${team.map(p => `
+                    <li class="player-item">
+                        <div class="player-info">
+                            <span style="font-weight: 500;">${p.name}</span>
+                            <span class="player-pos">${p.mainPos || '-'}</span>
+                        </div>
+                        <span class="player-score">${p.totalScore || '5.0'}</span>
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+        container.appendChild(teamCard);
+    });
 }
