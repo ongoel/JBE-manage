@@ -111,8 +111,8 @@ function doPost(e) {
 }
 
 function createJSONOutput(content) {
-  return ContentService.createTextOutput(JSON.stringify(content)).setMimeType(ContentService.MimeType.JSON)
-    .setHeader("Access-Control-Allow-Origin", "*");
+  return ContentService.createTextOutput(JSON.stringify(content))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ==========================================
