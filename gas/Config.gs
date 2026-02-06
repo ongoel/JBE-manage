@@ -46,9 +46,18 @@ var Config = {
     WITHDRAWN: '탈퇴'
   },
 
-  // 네이버 밴드 API 설정 (관리자가 직접 입력 필요)
+  // 네이버 밴드 API 설정 (스크립트 속성에서 관리)
   BAND: {
-    ACCESS_TOKEN: 'YOUR_ACCESS_TOKEN', // 밴드 개발자 센터에서 발급받은 토큰
-    BAND_KEY: 'YOUR_BAND_KEY'          // 대상 밴드의 고유 키
+    get ACCESS_TOKEN() { return PropertiesService.getScriptProperties().getProperty('BAND_ACCESS_TOKEN'); },
+    get BAND_KEY() { return PropertiesService.getScriptProperties().getProperty('BAND_BAND_KEY'); }
+  },
+
+  /**
+   * 보안 속성을 가져옵니다.
+   * @param {string} key 속성 키
+   * @returns {string} 속성 값
+   */
+  getSecureProperty: function(key) {
+    return PropertiesService.getScriptProperties().getProperty(key);
   }
 };

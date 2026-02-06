@@ -11,30 +11,33 @@
  * @returns {ContentService.TextOutput} JSON 응답
  */
 function doGet(e) {
-  var action = e.parameter.action || 'getMembers';
-  var result = {};
-
   try {
-    if (action === 'getMembers') {
-      // 실제 시트 연동 대신 Mock 데이터 반환 (추후 실제 데이터 연동 필요)
-      result = {
-        status: 'success',
-        data: getMockMembers()
-      };
-    } else {
-      result = {
-        status: 'error',
-        message: 'Unknown action: ' + action
-      };
-    }
-  } catch (error) {
-    result = {
-      status: 'error',
-      message: error.toString()
-    };
-  }
+    var action = e.parameter.action;
+    var token = e.parameter.token;
 
-  return createJSONOutput(result);
+    // 1. 공통 요약 데이터 (로그인 없이 접근 가능)
+    if (action === 'getSummary') {
+      var sheet = Utils.getSheetByName(Config.SHEETS.REGISTRY);
+      var total = sheet.getLastRow() - 1;
+      return createJSONOutput({ status: 'success', data: { totalMembers: total > 0 ? total : 0 } });
+    }
+
+    // 2. 상세 데이터 (세션 검증 필요)
+    var session = AuthModule.validateSession(token);
+    if (!session) {
+      return createJSONOutput({ status: 'error', message: '접근 권한이 없습니다.', code: 'UNAUTHORIZED' });
+    }
+
+    if (action === 'getMembers') {
+      var members = getMockMembers(); // 후에 실제 DB 연동
+      return createJSONOutput({ status: 'success', data: members });
+    }
+
+    return createJSONOutput({ status: 'error', message: '알 수 없는 요청' });
+
+  } catch (error) {
+    return createJSONOutput({ status: 'error', message: error.toString() });
+  }
 }
 
 /**
@@ -43,44 +46,46 @@ function doGet(e) {
  * @returns {ContentService.TextOutput} JSON 응답
  */
 function doPost(e) {
-  var output = {};
-
   try {
-    // 1. 요청 데이터 파싱
-    var contents = e.postData.contents;
-    var data = JSON.parse(contents);
-    var action = data.action;
-    var params = data.params || {};
-    var user = data.user || 'Unknown';
-
-    // 2. 액션 라우팅
-    switch (action) {
-      case 'addMember':
-        output = handleAddMember(params, user);
-        break;
-      case 'updateMember':
-        output = handleUpdateMember(params, user);
-        break;
-      case 'deleteMember':
-        output = handleDeleteMember(params, user);
-        break;
-      case 'transitionYear':
-        output = handleTransitionYear(params, user);
-        break;
-      default:
-        throw new Error('알 수 없는 액션입니다: ' + action);
+    var params = JSON.parse(e.postData.contents);
+    var action = params.action;
+    
+    // 1. 로그인 처리는 세션 검증 없이 허용
+    if (action === 'login') {
+      var result = AuthModule.login(params.username, params.password);
+      return createJSONOutput(result);
     }
 
-  } catch (error) {
-    output = {
-      status: 'error',
-      message: error.toString()
-    };
-    console.error('API Error: ' + error.toString());
-  }
+    // 2. 다른 모든 요청은 세션 검증 필요
+    var session = AuthModule.validateSession(params.token);
+    if (!session) {
+      return createJSONOutput({ success: false, message: '세션이 만료되었거나 권한이 없습니다.', code: 'UNAUTHORIZED' });
+    }
 
-  // 3. 응답 반환 (CORS 헤더 포함)
-  return createJSONOutput(output);
+    var result;
+    switch (action) {
+      case 'addMember':
+        result = handleAddMember(params, session.username);
+        break;
+      case 'updateMember':
+        result = handleUpdateMember(params, session.username);
+        break;
+      case 'deleteMember':
+        result = handleDeleteMember(params, session.username);
+        break;
+      case 'transitionYear':
+        result = handleTransitionYear(params, session.username);
+        break;
+      default:
+        result = { success: false, message: '알 수 없는 액션' };
+    }
+
+    return createJSONOutput(result);
+
+  } catch (error) {
+    console.error('API Error: ' + error.toString());
+    return createJSONOutput({ success: false, message: error.toString() });
+  }
 }
 
 /**

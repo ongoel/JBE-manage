@@ -29,28 +29,49 @@
             </div>
         </section>
 
-        <section class="member-list">
+        <section class="auth-section" id="auth-section">
             <div class="card">
-                <h3>👥 회원 명단</h3>
+                <h3>🔐 관리자 로그인</h3>
+                <form id="login-form">
+                    <div class="input-group">
+                        <input type="text" id="username" placeholder="아이디" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="password" placeholder="비밀번호" required>
+                    </div>
+                    <button type="submit" class="btn-primary">로그인</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="dashboard-stats">
+          <div class="stat-grid">
+              <div class="card stat-card">
+                  <span class="label">이달의 평균 출석률</span>
+                  <span class="value" id="avg-attendance">-</span>
+              </div>
+          </div>
+        </section>
+
+        <section class="member-list" id="member-section" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                  <h3>👥 회원 명단 (상세 정보)</h3>
+                  <button id="logout-btn" class="btn-secondary">로그아웃</button>
+                </div>
                 <div class="table-responsive">
                     <table id="members-table">
                         <thead>
                             <tr>
-                                <th>회원번호</th>
                                 <th>성명</th>
-                                <th>직급</th>
-                                <th>소속기관</th>
                                 <th>등번호</th>
                                 <th>주포지션</th>
-                                <th>선호포지션</th>
-                                <th>주발</th>
                                 <th>상태</th>
-                                <th>가입일</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="10" class="loading">데이터를 불러오는 중...</td>
+                                <td colspan="4" class="loading">로그인이 필요합니다.</td>
                             </tr>
                         </tbody>
                     </table>
