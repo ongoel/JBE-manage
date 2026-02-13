@@ -83,6 +83,7 @@ function showMemberSection() {
     document.getElementById('evaluation-section').style.display = 'block';
     document.getElementById('band-vote-section').style.display = 'block';
     document.getElementById('team-balancing-section').style.display = 'block';
+    fetchGameSchedules(); // 경기 일정 드롭다운 채우기
 }
 
 function hideMemberSection() {
@@ -91,6 +92,74 @@ function hideMemberSection() {
     document.getElementById('evaluation-section').style.display = 'none';
     document.getElementById('band-vote-section').style.display = 'none';
     document.getElementById('team-balancing-section').style.display = 'none';
+}
+
+/**
+ * 서버에서 경기 일정 목록을 가져와 각 드롭다운에 채워넣습니다.
+ * - 경기평가: 과거 경기 중 7일 이내만 선택 가능 (사후 평가용)
+ * - 밴드 투표 / 팀 밸런싱: 오늘 이후(미래) 경기만 선택 가능
+ */
+async function fetchGameSchedules() {
+    try {
+        const response = await fetch(`${GAS_API_URL}?action=getGameSchedules&token=${sessionToken}`);
+        const json = await response.json();
+
+        if (json.status !== 'success') return;
+
+        const schedules = json.data; // [{date:'YYYY-MM-DD', label:'M월 D일 (요일)'}]
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 7일 전 기준선 (경기 평가용)
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        // 경기 평가: 과거 경기 중 7일 이내 + 오늘 경기
+        const evalDates = schedules.filter(s => {
+            const d = new Date(s.date);
+            return d >= sevenDaysAgo && d <= today;
+        });
+
+        // 밴드 투표 & 팀 밸런싱: 오늘 이후(미래) 경기만
+        const futureDates = schedules.filter(s => {
+            const d = new Date(s.date);
+            return d >= today;
+        });
+
+        populateDateDropdown('eval-date', evalDates, '평가할 경기가 없습니다');
+        populateDateDropdown('vote-date', futureDates, '예정된 경기가 없습니다');
+        populateDateDropdown('balance-date', futureDates, '예정된 경기가 없습니다');
+
+    } catch (error) {
+        console.error('경기 일정 로딩 오류:', error);
+    }
+}
+
+/**
+ * 특정 select 요소에 날짜 옵션을 채워넣습니다.
+ */
+function populateDateDropdown(selectId, dates, emptyMsg) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    // 기본 옵션 외 모두 제거
+    select.innerHTML = '<option value="">경기 날짜를 선택하세요</option>';
+
+    if (dates.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = emptyMsg;
+        opt.disabled = true;
+        select.appendChild(opt);
+        return;
+    }
+
+    dates.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.date;
+        opt.textContent = s.label;
+        select.appendChild(opt);
+    });
 }
 
 async function fetchSummary() {

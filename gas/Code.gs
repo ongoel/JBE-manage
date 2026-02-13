@@ -106,6 +106,12 @@ function doGet(e) {
       var attendees = TeamModule.getAttendeesWithScores(dateStr);
       return createJSONOutput({ status: 'success', data: attendees });
     }
+
+    // 경기일정 목록 조회 (스프레드시트 기반)
+    if (action === 'getGameSchedules') {
+      var schedules = getGameScheduleList();
+      return createJSONOutput({ status: 'success', data: schedules });
+    }
   } catch (err) {
     return createJSONOutput({ status: 'error', message: err.toString() });
   }
@@ -308,6 +314,52 @@ var Utils = {
 };
 
 function getSheet(name) { return Utils.getSheetByName(name); }
+
+/**
+ * 경기일정 목록을 가져옵니다.
+ * '경기일정' 시트가 있으면 해당 시트에서, 없으면 출석부의 날짜 헤더에서 가져옵니다.
+ * @returns {Array} [{date: 'YYYY-MM-DD', label: 'M월 D일 (요일)'}]
+ */
+function getGameScheduleList() {
+  var dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  var results = [];
+  
+  // 1) '경기일정' 시트 시도
+  var scheduleSheet = Utils.getSheetByName('경기일정');
+  if (scheduleSheet && scheduleSheet.getLastRow() >= 2) {
+    var data = scheduleSheet.getRange(2, 1, scheduleSheet.getLastRow() - 1, 1).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][0] instanceof Date) {
+        var d = data[i][0];
+        results.push({
+          date: Utils.formatDate(d),
+          label: (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + dayNames[d.getDay()] + ')'
+        });
+      }
+    }
+    // 날짜순 정렬
+    results.sort(function(a, b) { return a.date.localeCompare(b.date); });
+    return results;
+  }
+  
+  // 2) 출석부 시트의 날짜 헤더에서 추출
+  var attendanceSheet = Utils.getSheetByName(Utils.getCurrentYearAttendanceSheetName());
+  if (attendanceSheet) {
+    var headers = attendanceSheet.getRange(1, 1, 1, attendanceSheet.getLastColumn()).getValues()[0];
+    for (var j = 3; j < headers.length; j++) {
+      if (headers[j] instanceof Date) {
+        var d = headers[j];
+        results.push({
+          date: Utils.formatDate(d),
+          label: (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + dayNames[d.getDay()] + ')'
+        });
+      }
+    }
+  }
+  
+  results.sort(function(a, b) { return a.date.localeCompare(b.date); });
+  return results;
+}
 
 function runSecureSetup() {
   var ui = SpreadsheetApp.getUi();
